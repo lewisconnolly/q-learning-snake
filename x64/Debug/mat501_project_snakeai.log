@@ -1,0 +1,3 @@
+﻿Snake.obj : error LNK2019: unresolved external symbol __imp__Py_NegativeRefcount referenced in function _Py_DECREF
+Snake.obj : error LNK2019: unresolved external symbol __imp__Py_RefTotal referenced in function _Py_DECREF
+C:\Users\lewis\source\repos\mat501_project_snakeai\x64\Debug\mat501_project_snakeai.exe : fatal error LNK1120: 2 unresolved externals

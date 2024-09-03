@@ -1,0 +1,25 @@
+﻿  Agent.cpp
+C:\Users\lewis\source\repos\mat501_project_snakeai\Global.h(14,33): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\lewis\source\repos\mat501_project_snakeai\Agent.cpp(14,15): warning C4305: '=': truncation from 'double' to 'float'
+C:\Users\lewis\source\repos\mat501_project_snakeai\Agent.cpp(15,20): warning C4305: '=': truncation from 'double' to 'float'
+C:\Users\lewis\source\repos\mat501_project_snakeai\Agent.cpp(16,20): warning C4305: '=': truncation from 'double' to 'float'
+C:\Users\lewis\source\repos\mat501_project_snakeai\Agent.cpp(53,15): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Agent.cpp(243,26): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Agent.cpp(247,26): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Agent.cpp(251,27): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Agent.cpp(272,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+  Snake.cpp
+C:\Users\lewis\source\repos\mat501_project_snakeai\Global.h(14,33): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\lewis\source\repos\mat501_project_snakeai\Snake.cpp(90,11): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Snake.cpp(190,71): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Snake.cpp(189,70): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Snake.cpp(327,73): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Snake.cpp(326,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Snake.cpp(372,18): warning C4244: '=': conversion from 'Uint64' to 'float', possible loss of data
+C:\Users\lewis\source\repos\mat501_project_snakeai\Snake.cpp(376,19): warning C4244: '=': conversion from 'Uint64' to 'float', possible loss of data
+  Generating code
+  163 of 1906 functions ( 8.6%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    285 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  mat501_project_snakeai.vcxproj -> C:\Users\lewis\source\repos\mat501_project_snakeai\x64\Release\mat501_project_snakeai.exe
