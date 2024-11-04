@@ -71,12 +71,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\vclib\SDL2_image\include;C:\vclib\SDL2\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\vclib\SDL2_image\lib\x64;C:\vclib\SDL2\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\vclib\SDL2_image\include;C:\vclib\SDL2\include;C:\vclib\SDL2_ttf\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\vclib\SDL2_image\lib\x64;C:\vclib\SDL2\lib\x64;C:\vclib\SDL2_ttf\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\vclib\SDL2_image\include;C:\vclib\SDL2\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\vclib\SDL2_image\lib\x64;C:\vclib\SDL2\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\vclib\SDL2_image\include;C:\vclib\SDL2\include;C:\vclib\SDL2_ttf\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\vclib\SDL2_image\lib\x64;C:\vclib\SDL2\lib\x64;C:\vclib\SDL2_ttf\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -117,7 +117,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -136,15 +136,17 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AdaptiveLoopDetector.cpp" />
     <ClCompile Include="Agent.cpp" />
     <ClCompile Include="Snake.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AdaptiveLoopDetector.h" />
     <ClInclude Include="Agent.h" />
     <ClInclude Include="Global.h" />
     <ClInclude Include="Vec2.h" />

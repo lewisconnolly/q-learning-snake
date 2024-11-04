@@ -1,22 +1,13 @@
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_ttf.h>
+#include "Global.h"
 #include <stdio.h>
-#include <string>
-#include "Vec2.h"
-#include <vector>
-#include <array>
-#include <map>
 #include <chrono>
 #include <utility>
 #include "Agent.h"
-#include <fstream>
-#include "Global.h"
-#include <math.h> 
-#include <iostream>
-#include <algorithm>
 #include <numeric>
 #include <sstream>
-#include "json.hpp"
 //#include "matplotlibcpp.h"
 
 namespace nh = nlohmann;
@@ -37,7 +28,7 @@ void InitLM()
 {
 	std::array<std::string, 16> surroundings = { "0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" };
 	std::array<std::string, 4> snakeDir = { "0", "1", "2", "3"};
-	std::array<std::string, 5> tailSides = { "0", "1", "2", "3", "4" };
+	std::array<std::string, 16> tailSides = { "0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" };
 	std::array<std::string, 3> foodDirX = { "0", "1", "NA" };
 	std::array<std::string, 3> foodDirY = { "2", "3", "NA" };	
 	
@@ -116,6 +107,31 @@ void DrawSnake(std::vector<Vec2>* snakePartsList, SDL_Renderer* renderer)
 	}
 }
 
+void DrawScore(int score, SDL_Renderer* renderer, TTF_Font* font, SDL_Surface*& surface, SDL_Texture*& texture, SDL_Rect* rect)
+{		
+	if (surface != nullptr) {
+		SDL_FreeSurface(surface);
+		surface = nullptr;
+	}
+	if (texture != nullptr) {
+		SDL_DestroyTexture(texture);
+		texture = nullptr;
+	}
+
+	surface = TTF_RenderText_Solid(font, std::to_string(score).c_str(), { 0xFF, 0xFF, 0xFF, 0xFF });
+	texture = SDL_CreateTextureFromSurface(renderer, surface);
+
+	int width, height;
+	SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);	
+	rect->x = static_cast<int>(global::WINDOW_WIDTH - width - 10);
+	rect->y = static_cast<int>(10);
+	rect->w = width;
+	rect->h = height;	
+
+	// Draw highest score
+	SDL_RenderCopy(renderer, texture, nullptr, rect);
+}
+
 //void ShowGraph(int* gameCount, Agent* agent)
 //{		
 //	// Prepare data.
@@ -166,7 +182,7 @@ void DrawSnake(std::vector<Vec2>* snakePartsList, SDL_Renderer* renderer)
 //	//plt::show();
 //}
 
-struct GameResult GameLoop(SDL_Renderer* renderer, Agent* agent)
+struct GameResult GameLoop(SDL_Renderer* renderer, TTF_Font* font, SDL_Surface* surface, SDL_Texture* texture, SDL_Rect* scoreRect, Agent* agent, int highScore)
 {			
 	// Frame time variables
 	float dt = 0.004f;
@@ -360,6 +376,7 @@ struct GameResult GameLoop(SDL_Renderer* renderer, Agent* agent)
 		// Draw food and snake
 		DrawFood(&foodPos, renderer);
 		DrawSnake(&snakePartsList, renderer);
+		DrawScore(highScore, renderer, font, surface, texture, scoreRect);
 
 		// Present the backbuffer
 		SDL_RenderPresent(renderer);
@@ -388,14 +405,33 @@ struct GameResult GameLoop(SDL_Renderer* renderer, Agent* agent)
 }
 
 int main(int argc, char* argv[])
-{		
+{
 	// Initialize SDL components
 	SDL_Init(SDL_INIT_VIDEO);
+	TTF_Init();
+
+	// Initialize fonts
+	TTF_Font* scoreFont = TTF_OpenFont("DejaVuSansMono.ttf", 40);
+	if (!scoreFont) {
+		std::cout << "Failed to load font: " << TTF_GetError() << "\n";
+		return 1;
+	}
 
 	// Create window and 2D rendering context
 	std::string windowTitle = "SnakeAI";
 	SDL_Window* window = SDL_CreateWindow(windowTitle.c_str(), 10, 40, global::WINDOW_WIDTH, global::WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
+	
+	// Create high score text
+	SDL_Surface* surface = nullptr;
+	SDL_Texture* texture = nullptr;
+	SDL_Rect scoreRect{};
+	int scoreWidth, scoreHeight;
+	SDL_QueryTexture(texture, nullptr, nullptr, &scoreWidth, &scoreHeight);
+	scoreRect.x = static_cast<int>(global::WINDOW_WIDTH - 40);
+	scoreRect.y = static_cast<int>(10);
+	scoreRect.w = scoreWidth;
+	scoreRect.h = scoreHeight;
 	
 	// Initialise learning matrix
 	InitLM();
@@ -404,20 +440,30 @@ int main(int argc, char* argv[])
 	Agent agent;
 
 	// Train agent
-	int gameCount = 0;	
+	int gameCount = 0;
+	int highScore = 0;
 	GameResult result;
 	while (running && gameCount < global::GAMES_LIMIT)
 	{
 		// Clear history of state and actions
 		agent.Reset();		
 		// Run game
-		result = GameLoop(renderer, &agent);		
+		result = GameLoop(renderer, scoreFont, surface, texture, &scoreRect, &agent, highScore);
 		// Increase number of games
 		gameCount++;
+		// Update high score
+		if (result.score > highScore) { highScore = result.score; }
 		// Decrease epsilon by fraction each game
-		agent.epsilon -= global::EPSILON_DECAY * agent.epsilon;
+		agent.epsilon = std::max(global::EPSILON_MIN, global::EPSILON_DECAY * agent.epsilon);
 		// Results of each game
-		std::cout << "Numbers of games: " << gameCount << "; Last score: " << result.score << "; Death reason: " << result.deathReason << "; Epsilon: " << agent.epsilon << std::endl;
+		std::cout << "Game: " << gameCount
+				<< "; Score: " << result.score
+				<< "; Death: " << result.deathReason
+				<< "; Loops: " << agent.numLoops
+				<< "; Epsilon: " << agent.epsilon
+				<< "; Alpha: " << agent.learningRate
+				<< "; Gamma: " << agent.discountRate
+				<< std::endl;
 		// Save learning matrix to file every LM_SAVE_INTERVAL 
 		if (gameCount % global::LM_SAVE_INTERVAL == 0)
 		{
@@ -432,6 +478,8 @@ int main(int argc, char* argv[])
 	// Cleanup resources
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
+	TTF_CloseFont(scoreFont);
+	TTF_Quit();
 	SDL_Quit();
 
 	return 0;

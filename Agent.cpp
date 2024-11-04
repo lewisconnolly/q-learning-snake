@@ -1,28 +1,29 @@
 #include "Agent.h"
-#include <fstream>
-#include "Global.h"
-#include <algorithm>
-#include <math.h> 
-#include <string>
-#include "json.hpp"
 
 namespace nh = nlohmann;
 
 Agent::Agent()
 {
     // Q-learning equation parameters
-    epsilon = 0.1;
-    learningRate = 0.8;
-    discountRate = 0.2;
+    epsilon = 1.0;
+    learningRate = 0.75;
+    discountRate = 0.25;
+    numLoops = 0;
 
     // Learning matrix and action history
     LM = LoadLM("lm.json");
-    history = {};    
+    detector = AdaptiveLoopDetector::AdaptiveLoopDetector();
 }
 
 void Agent::Reset()
 {
-    history = {};
+    // Get number of repetitions of largest loop
+    AdaptiveLoopDetector::LoopInfo loopInfo = detector.detectLoop();
+    if (loopInfo.found)
+    {
+        numLoops = loopInfo.repetitions;
+    }
+    detector.clearHistory();
 }
 
 std::map<std::string, std::array<float, ACTION_NUM>> Agent::LoadLM(std::string path)
@@ -52,7 +53,7 @@ Agent::Action Agent::Act(std::vector<Vec2>* snakePartsList, Vec2* foodPos, int* 
     // Initialize random seed
     srand(time(NULL));
     
-    GameState state = GetState(snakePartsList, foodPos, snakeDir);
+    global::GameState state = GetState(snakePartsList, foodPos, snakeDir);
     int actionKey = 0;
 
     // Choose a random action (epsilon * 100)% of the time
@@ -92,15 +93,15 @@ Agent::Action Agent::Act(std::vector<Vec2>* snakePartsList, Vec2* foodPos, int* 
     Action action = Action(actionKey);
 
     // Add state and action to history list
-    HistoryEntry newHistoryEntry;
+    global::HistoryEntry newHistoryEntry;
     newHistoryEntry.actionKey = actionKey;
     newHistoryEntry.state = state;
-    history.push_back(newHistoryEntry);
+    detector.addState(newHistoryEntry);
 
     return action;
 }
 
-struct Agent::GameState Agent::GetState(std::vector<Vec2>* snakePartsList, Vec2* foodPos, int* snakeDir)
+struct global::GameState Agent::GetState(std::vector<Vec2>* snakePartsList, Vec2* foodPos, int* snakeDir)
 {
     // Get coordinates of snake's head and distance to food
     Vec2 snakeHead = snakePartsList->back();
@@ -170,7 +171,7 @@ struct Agent::GameState Agent::GetState(std::vector<Vec2>* snakePartsList, Vec2*
     }
 
     // Calculate number of sides tail is on
-    int numTailSides = 0;
+    std::string tailSidesStr = "0000";
     bool foundLeft = false;
     bool foundRight = false;
     bool foundAbove = false;
@@ -179,36 +180,40 @@ struct Agent::GameState Agent::GetState(std::vector<Vec2>* snakePartsList, Vec2*
     {
         if (!foundLeft && t.y == snakeHead.y && t.x < snakeHead.x) // Tail part to left of head
         {            
-            numTailSides++;
+            surroundingsStr[0] = '1';
+            foundLeft = true;
         }
         else if (!foundRight && t.y == snakeHead.y && t.x > snakeHead.x) // Tail part to right of snake
         {            
-            numTailSides++;
+            surroundingsStr[1] = '1';
+            foundRight = true;
         }
         else if (!foundAbove && t.y < snakeHead.y && t.x == snakeHead.x) // Tail part above of snake
         {                        
-            numTailSides++;
+            surroundingsStr[2] = '1';
+            foundAbove = true;
         }
         else if (!foundBelow && t.y > snakeHead.y && t.x == snakeHead.x) // Tail part below of snake
         {            
-            numTailSides++;
+            surroundingsStr[3] = '1';
+            foundBelow = true;
         }
     }
 
     // Create and return new game state
-    GameState newGameState;
+    global::GameState newGameState;
     newGameState.distToFood = Vec2(foodDistX, foodDistY);
     newGameState.foodDirX = foodDirX;
     newGameState.foodDirY = foodDirY;
     newGameState.foodPos = *foodPos;
     newGameState.surroundings = surroundingsStr;
-    newGameState.tailSides = std::to_string(numTailSides);
+    newGameState.tailSides = tailSidesStr;
     newGameState.snakeDir = std::to_string(*snakeDir);
         
     return newGameState;
 }
 
-std::string Agent::GetStateStr(Agent::GameState gameState)
+std::string Agent::GetStateStr(global::GameState gameState)
 {
     std::string gameStateStr = "(" + gameState.foodDirX + "," + gameState.foodDirY + "," + gameState.snakeDir + "," + gameState.tailSides + "," + gameState.surroundings + ")";
     return gameStateStr;
@@ -216,13 +221,15 @@ std::string Agent::GetStateStr(Agent::GameState gameState)
 
 void Agent::UpdateLM(std::string* deathReason, std::vector<Vec2>* snakePartsList, Vec2* foodPos, int* snakeDir)
 {
+    bool gotFood = false;
     float reward = 0.0; // Intialise reward    
     float currStateMaxReward = 0.0; // Intialise maximum reward in current state (pre-action). Stays 0 if agent died
-
-    GameState prevState = history.back().state; // Pre last action state    
+ 
+    global::HistoryEntry prevEntry = detector.getLastEntry();
+    global::GameState prevState = prevEntry.state; // Pre last action state    
     std::string prevStateStr = GetStateStr(prevState); // Get state string for last state
-    int prevActionKey = history.back().actionKey; // Last action
-    GameState currState = GetState(snakePartsList, foodPos, snakeDir); // State now (after effect applied from action)
+    int prevActionKey = prevEntry.actionKey; // Last action
+    global::GameState currState = GetState(snakePartsList, foodPos, snakeDir); // State now (after effect applied from action)
 
     // If the action was straight then increase or decrease the reward
     // Encourage moving towards food if already on track and discourage continuing to move away if off track
@@ -238,15 +245,18 @@ void Agent::UpdateLM(std::string* deathReason, std::vector<Vec2>* snakePartsList
         Vec2 currDistToFood = currState.distToFood;
         Vec2 prevDistToFood = prevState.distToFood;        
 
-        if (currState.foodPos != prevState.foodPos) // If food position changed between states then it was eaten and so reward is positive
+        if (currState.foodPos != prevState.foodPos) // If food position changed between states then it was eaten and so reward is extra large positive
         {
-            reward = 1.5 * rewardModifier;
+            reward = 2.0 * rewardModifier;
+            // Boost learning rate slightly when food is collected
+            learningRate = std::min(1.0, learningRate * 1.025);
+            gotFood = true;
         }
-        else if (fabs(currDistToFood.x) < fabs(prevDistToFood.x) || fabs(currDistToFood.y) < fabs(prevDistToFood.y)) // If snake moved closer to food after action in prev state -> reward is positive
+        else if (fabs(currDistToFood.x) < fabs(prevDistToFood.x) || fabs(currDistToFood.y) < fabs(prevDistToFood.y)) // If snake moved closer to food after action in prev state -> reward is medium positive
         {
             reward = 1.0 * rewardModifier;
         }
-        else // Snake moved farther away from food -> reward is negative
+        else if (fabs(currDistToFood.x) != fabs(prevDistToFood.x) || fabs(currDistToFood.y) < fabs(prevDistToFood.y)) // Snake moved farther away from food -> reward is medium negative 
         {
             reward = -1.0 * rewardModifier;
         }
@@ -269,7 +279,17 @@ void Agent::UpdateLM(std::string* deathReason, std::vector<Vec2>* snakePartsList
     }
     else
     {
-        reward = -1.5 * rewardModifier; // Negative reward if action led to death
+        reward = -2.0 * rewardModifier;
+    }
+
+    // Punish actions that led to loops when no food was collected
+    if (!gotFood)
+    {
+        AdaptiveLoopDetector::LoopInfo loopInfo = detector.detectLoop();
+        if (loopInfo.found)
+        {
+            reward -= 0.5;
+        }
     }
 
     // Update previous state Q-value based on reward and potential future rewards (discounted)
